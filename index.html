@@ -1,0 +1,1845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Infolayer — Intelligent Terminal Operations</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #050f1f;
+    --deep: #071829;
+    --ocean: #0a2540;
+    --mid: #0d3a6e;
+    --teal: #006d6d;
+    --teal-light: #00a896;
+    --aqua: #00cfb4;
+    --cyan: #00e5ff;
+    --green: #22c55e;
+    --white: #f0f6ff;
+    --muted: #8ca3be;
+    --border: rgba(0,229,255,0.12);
+    --glass: rgba(10,37,64,0.6);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--navy);
+    color: var(--white);
+    overflow-x: hidden;
+    line-height: 1.6;
+  }
+
+  /* ─── NOISE TEXTURE OVERLAY ─── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  /* ─── NAV ─── */
+  nav {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 100;
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 72px;
+    background: rgba(5,15,31,0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    transition: all 0.3s ease;
+  }
+
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+
+  .logo-mark {
+    width: 36px;
+    height: 36px;
+    position: relative;
+  }
+
+  .logo-text {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.35rem;
+    font-weight: 400;
+    color: var(--white);
+    letter-spacing: -0.02em;
+  }
+
+  .logo-text span { color: var(--aqua); }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 2.5rem;
+    list-style: none;
+  }
+
+  .nav-links a {
+    text-decoration: none;
+    color: var(--muted);
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    transition: color 0.2s;
+  }
+
+  .nav-links a:hover { color: var(--white); }
+
+  .nav-cta {
+    background: var(--aqua);
+    color: var(--navy) !important;
+    padding: 0.5rem 1.25rem;
+    border-radius: 4px;
+    font-weight: 600 !important;
+    transition: opacity 0.2s !important;
+  }
+
+  .nav-cta:hover { opacity: 0.85; }
+
+  .hamburger {
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    cursor: pointer;
+    padding: 4px;
+  }
+
+  .hamburger span {
+    display: block;
+    width: 24px;
+    height: 2px;
+    background: var(--white);
+    border-radius: 2px;
+    transition: all 0.3s;
+  }
+
+  .mobile-menu {
+    display: none;
+    position: fixed;
+    top: 72px;
+    left: 0;
+    right: 0;
+    background: rgba(5,15,31,0.98);
+    backdrop-filter: blur(20px);
+    z-index: 99;
+    padding: 1.5rem 2rem;
+    flex-direction: column;
+    gap: 1.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .mobile-menu a {
+    text-decoration: none;
+    color: var(--muted);
+    font-size: 1rem;
+    font-weight: 500;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border);
+    transition: color 0.2s;
+  }
+
+  .mobile-menu a:last-child { border-bottom: none; }
+  .mobile-menu a:hover { color: var(--aqua); }
+  .mobile-menu.open { display: flex; }
+
+  /* ─── HERO ─── */
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    padding: 8rem 2rem 4rem;
+    overflow: hidden;
+  }
+
+  .hero-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+  }
+
+  /* Animated grid */
+  .hero-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+    animation: gridShift 20s linear infinite;
+  }
+
+  @keyframes gridShift {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(60px, 60px); }
+  }
+
+  /* Radial glow */
+  .hero-glow {
+    position: absolute;
+    top: -10%;
+    right: -10%;
+    width: 70%;
+    height: 80%;
+    background: radial-gradient(ellipse, rgba(0,168,150,0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-glow-2 {
+    position: absolute;
+    bottom: -20%;
+    left: -10%;
+    width: 60%;
+    height: 70%;
+    background: radial-gradient(ellipse, rgba(13,58,110,0.5) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  /* Data streams */
+  .data-stream {
+    position: absolute;
+    width: 1px;
+    background: linear-gradient(180deg, transparent, var(--aqua), transparent);
+    opacity: 0.15;
+    animation: streamFall linear infinite;
+  }
+
+  @keyframes streamFall {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(200vh); }
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 2;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    align-items: center;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(0,229,255,0.08);
+    border: 1px solid rgba(0,229,255,0.2);
+    border-radius: 100px;
+    padding: 0.375rem 1rem;
+    font-size: 0.75rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--aqua);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+    animation: fadeSlideUp 0.8s ease both;
+  }
+
+  .badge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--aqua);
+    animation: pulse 2s ease infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  .hero-headline {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2.2rem, 4vw, 3.5rem);
+    font-weight: 400;
+    line-height: 1.08;
+    letter-spacing: -0.03em;
+    margin-bottom: 1.5rem;
+    animation: fadeSlideUp 0.8s 0.1s ease both;
+  }
+
+  .hero-headline .accent { color: var(--aqua); }
+  .hero-headline .accent-green { color: var(--teal-light); }
+
+  .hero-sub {
+    font-size: 1rem;
+    color: var(--muted);
+    max-width: 480px;
+    margin-bottom: 2rem;
+    line-height: 1.7;
+    animation: fadeSlideUp 0.8s 0.2s ease both;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+    animation: fadeSlideUp 0.8s 0.3s ease both;
+  }
+
+  .btn-primary {
+    background: var(--aqua);
+    color: var(--navy);
+    padding: 0.875rem 1.75rem;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-decoration: none;
+    letter-spacing: 0.01em;
+    transition: all 0.25s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    border: none;
+    cursor: pointer;
+  }
+
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,229,255,0.25); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--white);
+    padding: 0.875rem 1.75rem;
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 0.9rem;
+    text-decoration: none;
+    border: 1px solid var(--border);
+    transition: all 0.25s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .btn-ghost:hover { border-color: rgba(0,229,255,0.4); color: var(--aqua); }
+
+  /* Terminal widget */
+  .hero-terminal {
+    background: rgba(7,24,41,0.8);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    animation: fadeSlideUp 0.8s 0.2s ease both;
+    backdrop-filter: blur(10px);
+  }
+
+  .terminal-bar {
+    background: rgba(13,58,110,0.4);
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot-r { background: #ff5f57; }
+  .dot-y { background: #febc2e; }
+  .dot-g { background: #28c840; }
+
+  .terminal-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--muted);
+    margin-left: 0.5rem;
+    letter-spacing: 0.05em;
+  }
+
+  .terminal-body { padding: 1.25rem; }
+
+  .metric-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.875rem;
+    margin-bottom: 1rem;
+  }
+
+  .metric-card {
+    background: rgba(0,229,255,0.04);
+    border: 1px solid rgba(0,229,255,0.1);
+    border-radius: 8px;
+    padding: 0.875rem;
+  }
+
+  .metric-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.35rem;
+  }
+
+  .metric-value {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.4rem;
+    font-weight: 400;
+    color: var(--aqua);
+  }
+
+  .metric-value.green { color: var(--green); }
+  .metric-value.teal { color: var(--teal-light); }
+
+  .metric-delta {
+    font-size: 0.7rem;
+    color: var(--green);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .terminal-chart {
+    height: 60px;
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    padding: 0.5rem 0;
+    border-top: 1px solid var(--border);
+    margin-top: 0.5rem;
+  }
+
+  .bar {
+    flex: 1;
+    background: linear-gradient(180deg, var(--aqua), var(--teal));
+    border-radius: 2px 2px 0 0;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+    animation: growBar 1s ease both;
+  }
+
+  @keyframes growBar {
+    from { transform: scaleY(0); transform-origin: bottom; }
+    to { transform: scaleY(1); transform-origin: bottom; }
+  }
+
+  .bar:nth-child(odd) { opacity: 0.4; }
+  .bar.active { opacity: 1; background: var(--aqua); }
+
+  /* Trust bar */
+  .trust-bar {
+    padding: 1.25rem 2rem;
+    background: rgba(10,37,64,0.5);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    position: relative;
+    z-index: 2;
+  }
+
+  .trust-bar-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 2rem;
+    flex-wrap: wrap;
+  }
+
+  .trust-item {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  .trust-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    background: rgba(0,229,255,0.08);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .trust-item strong { color: var(--white); }
+
+  /* ─── SECTIONS ─── */
+  section { position: relative; z-index: 1; }
+
+  .section-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 5rem 2rem;
+  }
+
+  .section-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--aqua);
+    margin-bottom: 0.875rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .section-label::before {
+    content: '';
+    display: block;
+    width: 20px;
+    height: 1px;
+    background: var(--aqua);
+  }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(1.8rem, 3vw, 2.75rem);
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: -0.025em;
+    margin-bottom: 1rem;
+  }
+
+  .section-title span { color: var(--aqua); }
+
+  .section-desc {
+    color: var(--muted);
+    max-width: 560px;
+    line-height: 1.75;
+    font-size: 1rem;
+  }
+
+  /* ─── PROBLEM / ICEBERG ─── */
+  .problem {
+    background: linear-gradient(180deg, var(--navy) 0%, var(--deep) 100%);
+  }
+
+  .problem-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    align-items: start;
+    margin-top: 3rem;
+  }
+
+  .iceberg-visual {
+    position: relative;
+  }
+
+  .iceberg-svg-wrap {
+    position: relative;
+    width: 100%;
+  }
+
+  .challenge-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .challenge-item {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    padding: 1.25rem;
+    background: rgba(10,37,64,0.5);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    transition: border-color 0.25s, background 0.25s;
+  }
+
+  .challenge-item:hover {
+    border-color: rgba(0,229,255,0.25);
+    background: rgba(10,37,64,0.8);
+  }
+
+  .challenge-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    background: rgba(0,229,255,0.08);
+    border: 1px solid rgba(0,229,255,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.1rem;
+  }
+
+  .challenge-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: var(--white);
+  }
+
+  .challenge-desc {
+    font-size: 0.825rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* ─── PLATFORM ─── */
+  .platform {
+    background: var(--deep);
+  }
+
+  .platform-header {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    align-items: start;
+    margin-bottom: 3.5rem;
+  }
+
+  .platform-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: linear-gradient(135deg, rgba(0,109,109,0.3), rgba(0,168,150,0.15));
+    border: 1px solid rgba(0,168,150,0.3);
+    border-radius: 4px;
+    padding: 0.375rem 0.875rem;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--teal-light);
+    letter-spacing: 0.02em;
+    margin-bottom: 1rem;
+  }
+
+  .platform-tagline {
+    font-size: 0.95rem;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+
+  .modules-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.25rem;
+  }
+
+  .module-card {
+    background: rgba(7,24,41,0.7);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    cursor: default;
+  }
+
+  .module-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--teal), var(--aqua));
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+    transform-origin: left;
+  }
+
+  .module-card:hover::before { transform: scaleX(1); }
+
+  .module-card:hover {
+    border-color: rgba(0,229,255,0.2);
+    background: rgba(7,24,41,0.95);
+    transform: translateY(-3px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+  }
+
+  .module-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+
+  .module-name {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--aqua);
+    letter-spacing: 0.05em;
+  }
+
+  .module-dept {
+    font-size: 0.7rem;
+    color: var(--muted);
+    background: rgba(0,229,255,0.06);
+    border: 1px solid var(--border);
+    padding: 0.2rem 0.5rem;
+    border-radius: 3px;
+  }
+
+  .module-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--white);
+  }
+
+  .module-desc {
+    font-size: 0.82rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .module-features {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .module-feat {
+    font-size: 0.78rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .module-feat::before {
+    content: '→';
+    color: var(--teal-light);
+    font-size: 0.7rem;
+    flex-shrink: 0;
+  }
+
+  /* ─── METHODOLOGY ─── */
+  .methodology {
+    background: var(--navy);
+    overflow: hidden;
+  }
+
+  .method-intro {
+    text-align: center;
+    max-width: 600px;
+    margin: 0 auto 4rem;
+  }
+
+  .method-intro .section-label { justify-content: center; }
+  .method-intro .section-label::before { display: none; }
+
+  .stages-container {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    position: relative;
+    margin-top: 1rem;
+  }
+
+  .stages-connector {
+    position: absolute;
+    top: 48px;
+    left: calc(12.5%);
+    right: calc(12.5%);
+    height: 1px;
+    background: linear-gradient(90deg, var(--teal), var(--aqua), var(--teal), var(--aqua));
+    z-index: 0;
+  }
+
+  .stage-card {
+    position: relative;
+    z-index: 1;
+    padding: 0 1rem 1.5rem;
+    text-align: center;
+  }
+
+  .stage-num {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: var(--ocean);
+    border: 2px solid var(--teal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.25rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--teal-light);
+    font-weight: 500;
+    position: relative;
+    transition: all 0.3s;
+  }
+
+  .stage-card:hover .stage-num {
+    background: var(--teal);
+    border-color: var(--aqua);
+    color: var(--white);
+    box-shadow: 0 0 20px rgba(0,168,150,0.4);
+  }
+
+  .stage-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 0.5rem;
+    letter-spacing: -0.01em;
+  }
+
+  .stage-subtitle {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--aqua);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.875rem;
+  }
+
+  .stage-desc {
+    font-size: 0.83rem;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+
+  .stage-timeline {
+    display: inline-block;
+    margin-top: 0.75rem;
+    padding: 0.25rem 0.75rem;
+    background: rgba(0,229,255,0.06);
+    border: 1px solid rgba(0,229,255,0.15);
+    border-radius: 100px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--aqua);
+    letter-spacing: 0.05em;
+  }
+
+  /* ─── IMPACT ─── */
+  .impact {
+    background: linear-gradient(135deg, var(--deep) 0%, rgba(0,109,109,0.08) 50%, var(--deep) 100%);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .impact-inner {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    align-items: center;
+  }
+
+  .impact-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+
+  .stat-card {
+    background: rgba(7,24,41,0.7);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card.featured {
+    grid-column: span 2;
+    background: linear-gradient(135deg, rgba(0,109,109,0.2), rgba(0,168,150,0.08));
+    border-color: rgba(0,168,150,0.3);
+  }
+
+  .stat-number {
+    font-family: 'Syne', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: var(--aqua);
+    letter-spacing: -0.03em;
+    line-height: 1;
+    margin-bottom: 0.375rem;
+  }
+
+  .stat-card.featured .stat-number { font-size: 3rem; color: var(--teal-light); }
+
+  .stat-label {
+    font-size: 0.85rem;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .stat-label strong { color: var(--white); display: block; font-size: 0.9rem; margin-bottom: 0.125rem; }
+
+  .impact-content .section-desc { max-width: 100%; }
+
+  .trust-signals {
+    margin-top: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+  }
+
+  .trust-signal {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: rgba(10,37,64,0.4);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .trust-signal-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    background: rgba(0,229,255,0.08);
+    border: 1px solid rgba(0,229,255,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+
+  .trust-signal-text {
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  .trust-signal-text strong { color: var(--white); font-size: 0.9rem; display: block; }
+
+  /* ─── CONTACT ─── */
+  .contact {
+    background: var(--ocean);
+    border-top: 1px solid var(--border);
+  }
+
+  .contact-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    align-items: start;
+  }
+
+  .contact-form-wrap {
+    background: rgba(5,15,31,0.6);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 2rem;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .form-group {
+    margin-bottom: 1rem;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--muted);
+    margin-bottom: 0.4rem;
+    letter-spacing: 0.02em;
+  }
+
+  .form-input, .form-select, .form-textarea {
+    width: 100%;
+    background: rgba(7,24,41,0.7);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    color: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.875rem;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+
+  .form-input:focus, .form-select:focus, .form-textarea:focus {
+    border-color: rgba(0,229,255,0.4);
+    background: rgba(7,24,41,0.9);
+  }
+
+  .form-input::placeholder, .form-textarea::placeholder { color: rgba(140,163,190,0.5); }
+
+  .form-select option { background: var(--ocean); }
+
+  .form-textarea { resize: vertical; min-height: 100px; }
+
+  .form-submit {
+    width: 100%;
+    background: var(--aqua);
+    color: var(--navy);
+    border: none;
+    border-radius: 6px;
+    padding: 0.9rem;
+    font-family: 'Syne', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.25s;
+    margin-top: 0.5rem;
+    letter-spacing: 0.01em;
+  }
+
+  .form-submit:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(0,229,255,0.25); }
+
+  .contacts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .contact-person {
+    background: rgba(5,15,31,0.5);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    transition: border-color 0.25s;
+  }
+
+  .contact-person:hover { border-color: rgba(0,229,255,0.25); }
+
+  .contact-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--teal), var(--mid));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Syne', sans-serif;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--white);
+    margin-bottom: 0.875rem;
+    flex-shrink: 0;
+  }
+
+  .contact-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--white);
+    margin-bottom: 0.2rem;
+  }
+
+  .contact-role {
+    font-size: 0.78rem;
+    color: var(--aqua);
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.03em;
+    margin-bottom: 0.875rem;
+  }
+
+  .contact-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .contact-info a {
+    font-size: 0.83rem;
+    color: var(--muted);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: color 0.2s;
+  }
+
+  .contact-info a:hover { color: var(--aqua); }
+
+  /* ─── FOOTER ─── */
+  footer {
+    background: var(--navy);
+    border-top: 1px solid var(--border);
+    padding: 2rem;
+  }
+
+  .footer-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .footer-copy {
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 1.5rem;
+  }
+
+  .footer-links a {
+    font-size: 0.78rem;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .footer-links a:hover { color: var(--aqua); }
+
+  /* ─── ANIMATIONS ─── */
+  @keyframes fadeSlideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .fade-in {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+  }
+
+  .fade-in.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ─── SCROLLBAR ─── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--navy); }
+  ::-webkit-scrollbar-thumb { background: var(--mid); border-radius: 3px; }
+
+  /* ─── DIVIDER ─── */
+  .divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border), transparent);
+    margin: 0;
+  }
+
+  /* ─── RESPONSIVE ─── */
+  @media (max-width: 1024px) {
+    .hero-content { grid-template-columns: 1fr; gap: 3rem; }
+    .hero-terminal { max-width: 500px; }
+    .problem-grid { grid-template-columns: 1fr; }
+    .platform-header { grid-template-columns: 1fr; }
+    .impact-inner { grid-template-columns: 1fr; }
+    .contact-grid { grid-template-columns: 1fr; }
+    .stages-container { grid-template-columns: 1fr 1fr; gap: 2rem; }
+    .stages-connector { display: none; }
+  }
+
+  @media (max-width: 768px) {
+    .nav-links { display: none; }
+    .hamburger { display: flex; }
+    .hero { padding: 6rem 1.5rem 3rem; }
+    .section-inner { padding: 3.5rem 1.5rem; }
+    .stages-container { grid-template-columns: 1fr; }
+    .impact-stats { grid-template-columns: 1fr 1fr; }
+    .stat-card.featured { grid-column: span 2; }
+    .form-row { grid-template-columns: 1fr; }
+    .footer-inner { flex-direction: column; text-align: center; }
+    .trust-bar-inner { justify-content: center; }
+    .modules-grid { grid-template-columns: 1fr; }
+    .hero-headline { font-size: 2rem; }
+  }
+
+  @media (max-width: 480px) {
+    .impact-stats { grid-template-columns: 1fr; }
+    .stat-card.featured { grid-column: span 1; }
+    .hero-actions { flex-direction: column; align-items: flex-start; }
+    .metric-grid { grid-template-columns: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav id="navbar">
+  <a href="#" class="nav-logo">
+    <svg class="logo-mark" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect width="36" height="36" rx="6" fill="rgba(0,229,255,0.1)"/>
+      <rect x="1" y="1" width="34" height="34" rx="5" stroke="rgba(0,229,255,0.3)" stroke-width="1"/>
+      <path d="M8 24 L14 14 L18 19 L22 12 L28 24" stroke="#00e5ff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="14" cy="14" r="2" fill="#00cfb4"/>
+      <circle cx="22" cy="12" r="2" fill="#00e5ff"/>
+      <path d="M8 27h20" stroke="rgba(0,229,255,0.3)" stroke-width="1"/>
+    </svg>
+    <span class="logo-text">info<span>layer</span></span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#solutions">Solutions</a></li>
+    <li><a href="#methodology">Methodology</a></li>
+    <li><a href="#impact">Impact</a></li>
+    <li><a href="#contact" class="nav-cta">Contact Us</a></li>
+  </ul>
+  <div class="hamburger" id="hamburger" onclick="toggleMenu()">
+    <span></span><span></span><span></span>
+  </div>
+</nav>
+
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#solutions" onclick="toggleMenu()">Solutions</a>
+  <a href="#methodology" onclick="toggleMenu()">Methodology</a>
+  <a href="#impact" onclick="toggleMenu()">Impact</a>
+  <a href="#contact" onclick="toggleMenu()">Contact Us</a>
+</div>
+
+<!-- HERO -->
+<section class="hero" id="home">
+  <div class="hero-bg">
+    <div class="hero-grid"></div>
+    <div class="hero-glow"></div>
+    <div class="hero-glow-2"></div>
+    <!-- Data streams -->
+    <div class="data-stream" style="left:8%;height:40%;animation-duration:4s;animation-delay:0s;"></div>
+    <div class="data-stream" style="left:22%;height:60%;animation-duration:6s;animation-delay:1.2s;"></div>
+    <div class="data-stream" style="left:55%;height:50%;animation-duration:5s;animation-delay:0.5s;"></div>
+    <div class="data-stream" style="left:75%;height:35%;animation-duration:4.5s;animation-delay:2s;"></div>
+    <div class="data-stream" style="left:90%;height:55%;animation-duration:7s;animation-delay:0.8s;"></div>
+  </div>
+
+  <div class="hero-content">
+    <div>
+      <div class="hero-badge">
+        <span class="badge-dot"></span>
+        BI & AI Driven Performance Management
+      </div>
+      <h1 class="hero-headline">
+        Enabling <span class="accent">Intelligent</span><br>
+        Terminal Operations<br>
+        Through <span class="accent-green">Data-driven</span><br>Innovations
+      </h1>
+      <p class="hero-sub">
+        Move from information overload to intelligent action. Infolayer transforms fragmented port and terminal data into decisive insight — powering the next generation of maritime logistics.
+      </p>
+      <div class="hero-actions">
+        <a href="#contact" class="btn-primary">
+          Discover Your Operational Truth
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </a>
+        <a href="#solutions" class="btn-ghost">
+          Explore terminalSense™
+        </a>
+      </div>
+    </div>
+
+    <div class="hero-terminal">
+      <div class="terminal-bar">
+        <div class="dot dot-r"></div>
+        <div class="dot dot-y"></div>
+        <div class="dot dot-g"></div>
+        <span class="terminal-label">terminalSense™ · live dashboard</span>
+      </div>
+      <div class="terminal-body">
+        <div class="metric-grid">
+          <div class="metric-card">
+            <div class="metric-label">Berth Utilisation</div>
+            <div class="metric-value">87.4<span style="font-size:0.9rem">%</span></div>
+            <div class="metric-delta">↑ +3.2% vs last month</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Crane Productivity</div>
+            <div class="metric-value green">32.1</div>
+            <div class="metric-delta" style="color:var(--teal-light)">moves/hr · optimal</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Dwell Time</div>
+            <div class="metric-value teal">4.2<span style="font-size:0.9rem">d</span></div>
+            <div class="metric-delta">↓ −0.8d savings</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Labor Cost Index</div>
+            <div class="metric-value">0.84</div>
+            <div class="metric-delta" style="color:var(--green)">↓ −12% YoY</div>
+          </div>
+        </div>
+        <div class="terminal-chart">
+          <div class="bar" style="height:40%"></div>
+          <div class="bar" style="height:55%"></div>
+          <div class="bar" style="height:45%"></div>
+          <div class="bar" style="height:70%"></div>
+          <div class="bar" style="height:60%"></div>
+          <div class="bar" style="height:80%"></div>
+          <div class="bar" style="height:65%"></div>
+          <div class="bar active" style="height:87%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST BAR -->
+<div class="trust-bar">
+  <div class="trust-bar-inner">
+    <div class="trust-item">
+      <div class="trust-icon">🏛️</div>
+      <span><strong>UK Government</strong> Registered R&amp;D Status</span>
+    </div>
+    <div class="trust-item">
+      <div class="trust-icon">📅</div>
+      <span><strong>12+ Years</strong> Port &amp; Terminal Focus</span>
+    </div>
+    <div class="trust-item">
+      <div class="trust-icon">🌍</div>
+      <span><strong>Global Deployments</strong> Europe · Americas · Africa</span>
+    </div>
+    <div class="trust-item">
+      <div class="trust-icon">💰</div>
+      <span><strong>6-12 Month</strong> Typical Payback Period</span>
+    </div>
+  </div>
+</div>
+
+<!-- PROBLEM / ICEBERG -->
+<section class="problem" id="problem">
+  <div class="section-inner">
+    <div class="section-label">The Challenge</div>
+    <h2 class="section-title">The <span>Iceberg</span> Beneath Your Operations</h2>
+    <p class="section-desc">Port and terminal operators face a paradox: drowning in data yet starved of insight. The surface tells one story — the operational reality lies beneath.</p>
+
+    <div class="problem-grid fade-in">
+      <div>
+        <!-- SVG Iceberg Illustration -->
+        <svg viewBox="0 0 400 480" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:420px">
+          <!-- water line -->
+          <line x1="20" y1="190" x2="380" y2="190" stroke="rgba(0,229,255,0.3)" stroke-width="1" stroke-dasharray="6 4"/>
+          <text x="290" y="185" fill="rgba(0,229,255,0.5)" font-family="JetBrains Mono" font-size="10" letter-spacing="2">WATERLINE</text>
+
+          <!-- Above water - tip -->
+          <path d="M200 30 L280 190 L120 190 Z" fill="url(#iceTop)" stroke="rgba(0,229,255,0.4)" stroke-width="1"/>
+
+          <!-- Below water - mass -->
+          <path d="M120 190 L60 380 L100 450 L200 460 L300 450 L340 380 L280 190 Z" fill="url(#iceBottom)" stroke="rgba(0,168,150,0.3)" stroke-width="1"/>
+
+          <defs>
+            <linearGradient id="iceTop" x1="200" y1="30" x2="200" y2="190" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="rgba(0,229,255,0.25)"/>
+              <stop offset="100%" stop-color="rgba(0,229,255,0.1)"/>
+            </linearGradient>
+            <linearGradient id="iceBottom" x1="200" y1="190" x2="200" y2="460" gradientUnits="userSpaceOnUse">
+              <stop offset="0%" stop-color="rgba(0,109,109,0.3)"/>
+              <stop offset="100%" stop-color="rgba(0,109,109,0.08)"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Labels above -->
+          <text x="200" y="120" text-anchor="middle" fill="#00e5ff" font-family="Syne, sans-serif" font-size="11" font-weight="700">VISIBLE METRICS</text>
+          <text x="200" y="140" text-anchor="middle" fill="rgba(0,229,255,0.6)" font-family="DM Sans, sans-serif" font-size="9">KPIs · Reports · Dashboards</text>
+
+          <!-- Labels below -->
+          <text x="200" y="255" text-anchor="middle" fill="rgba(0,168,150,0.9)" font-family="Syne, sans-serif" font-size="10" font-weight="700">HIDDEN COMPLEXITY</text>
+          <text x="200" y="280" text-anchor="middle" fill="rgba(140,163,190,0.7)" font-family="DM Sans, sans-serif" font-size="9">TOS · ERP · IoT · SCADA</text>
+          <text x="200" y="310" text-anchor="middle" fill="rgba(140,163,190,0.6)" font-family="DM Sans, sans-serif" font-size="9">Manual Processes · Data Silos</text>
+          <text x="200" y="340" text-anchor="middle" fill="rgba(140,163,190,0.5)" font-family="DM Sans, sans-serif" font-size="9">System Fragmentation</text>
+          <text x="200" y="370" text-anchor="middle" fill="rgba(140,163,190,0.4)" font-family="DM Sans, sans-serif" font-size="9">Operational Blind Spots</text>
+          <text x="200" y="400" text-anchor="middle" fill="rgba(140,163,190,0.3)" font-family="DM Sans, sans-serif" font-size="9">Transformation Pressure</text>
+        </svg>
+      </div>
+
+      <div class="challenge-list">
+        <div class="challenge-item">
+          <div class="challenge-icon">⚡</div>
+          <div>
+            <div class="challenge-title">Fragile Operations</div>
+            <div class="challenge-desc">Terminal operations built on manual workarounds and fragmented data pipelines create brittleness at scale — one failure cascades across the entire value chain.</div>
+          </div>
+        </div>
+        <div class="challenge-item">
+          <div class="challenge-icon">🔗</div>
+          <div>
+            <div class="challenge-title">Heterogeneous System Landscapes</div>
+            <div class="challenge-desc">TOS, ERP, IoT sensors, SCADA, and legacy platforms rarely speak the same language. Data lives in silos, making holistic performance visibility nearly impossible.</div>
+          </div>
+        </div>
+        <div class="challenge-item">
+          <div class="challenge-icon">📊</div>
+          <div>
+            <div class="challenge-title">Reporting Overload, Zero Insight</div>
+            <div class="challenge-desc">Teams spend 60–70% of analytical capacity building reports — not reading them. The sheer volume of data obscures the signal that drives intelligent decisions.</div>
+          </div>
+        </div>
+        <div class="challenge-item">
+          <div class="challenge-icon">🔄</div>
+          <div>
+            <div class="challenge-title">Short-term vs Long-term Tension</div>
+            <div class="challenge-desc">The pressure to hit today's vessel schedule conflicts with the strategic mandate to digitally transform — creating a paralyzing tension that stalls progress.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- PLATFORM -->
+<section class="platform" id="solutions">
+  <div class="section-inner">
+    <div class="platform-header fade-in">
+      <div>
+        <div class="section-label">The Platform</div>
+        <div class="platform-badge">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="currentColor" stroke-width="1.2"/><path d="M5 7l2 2 4-4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          terminalSense™
+        </div>
+        <h2 class="section-title">Data Intelligence<br><span>for Every Function</span></h2>
+        <p class="section-desc">terminalSense™ is the unified BI &amp; AI platform built exclusively for ports and terminals. Seven purpose-built sense modules surface the right insight to the right decision-maker — at the right moment.</p>
+      </div>
+      <div style="padding-top:1rem;">
+        <p class="platform-tagline">Each module is pre-configured with terminal-specific KPIs, benchmarks, and analytical frameworks — eliminating months of custom development. Deploy in weeks, not years.</p>
+        <div style="margin-top:1.5rem;padding:1.25rem;background:rgba(0,229,255,0.04);border:1px solid var(--border);border-radius:8px;">
+          <div style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--aqua);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:0.5rem;">Architecture</div>
+          <div style="font-size:0.83rem;color:var(--muted);line-height:1.7;">Built on a cloud-native data mesh architecture with connectors for all major TOS, ERP, and IoT platforms — Navis, SPARCS, SAP, Oracle, and more.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modules-grid">
+      <!-- execSense -->
+      <div class="module-card fade-in">
+        <div class="module-top">
+          <span class="module-name">execSense™</span>
+          <span class="module-dept">Management</span>
+        </div>
+        <div class="module-title">Executive Intelligence</div>
+        <div class="module-desc">Board-level performance dashboards unifying commercial, operational, and financial signals into a single view of terminal health.</div>
+        <div class="module-features">
+          <span class="module-feat">Strategic KPI monitoring</span>
+          <span class="module-feat">Competitive benchmarking</span>
+          <span class="module-feat">Investment decision support</span>
+        </div>
+      </div>
+
+      <!-- revSense -->
+      <div class="module-card fade-in">
+        <div class="module-top">
+          <span class="module-name">revSense™</span>
+          <span class="module-dept">Commercial</span>
+        </div>
+        <div class="module-title">Revenue Analytics</div>
+        <div class="module-desc">Deep commercial intelligence across shipping lines, cargo mix, pricing, and capacity utilisation to maximise revenue per TEU.</div>
+        <div class="module-features">
+          <span class="module-feat">Tariff & billing analytics</span>
+          <span class="module-feat">Customer profitability</span>
+          <span class="module-feat">Volume forecasting</span>
+        </div>
+      </div>
+
+      <!-- opsSense -->
+      <div class="module-card fade-in">
+        <div class="module-top">
+          <span class="module-name">opsSense™</span>
+          <span class="module-dept">Operations</span>
+        </div>
+        <div class="module-title">Operational Excellence</div>
+        <div class="module-desc">Real-time operational intelligence from vessel berthing to gate-out — tracking every move, dwell, and delay across the terminal floor.</div>
+        <div class="module-features">
+          <span class="module-feat">Vessel performance tracking</span>
+          <span class="module-feat">Yard density & flow</span>
+          <span class="module-feat">Equipment cycle times</span>
+        </div>
+      </div>
+
+      <!-- engSense -->
+      <div class="module-card fade-in">
+        <div class="module-top">
+          <span class="module-name">engSense™</span>
+          <span class="module-dept">Engineering</span>
+        </div>
+        <div class="module-title">Asset Intelligence</div>
+        <div class="module-desc">Predictive maintenance, asset utilisation, and reliability analytics for cranes, vehicles, and infrastructure across the terminal estate.</div>
+        <div class="module-features">
+          <span class="module-feat">Predictive maintenance alerts</span>
+          <span class="module-feat">Asset utilisation heatmaps</span>
+          <span class="module-feat">OPEX vs CAPEX modelling</span>
+        </div>
+      </div>
+
+      <!-- laborSense -->
+      <div class="module-card fade-in">
+        <div class="module-top">
+          <span class="module-name">laborSense™</span>
+          <span class="module-dept">Workforce</span>
+        </div>
+        <div class="module-title">Workforce Analytics</div>
+        <div class="module-desc">Labour planning, gang productivity, fatigue risk, and cost-per-move analytics to optimise workforce deployment and control costs.</div>
+        <div class="module-features">
+          <span class="module-feat">Gang productivity tracking</span>
+          <span class="module-feat">Shift cost analysis</span>
+          <span class="module-feat">Overtime & absenteeism</span>
+        </div>
+      </div>
+
+      <!-- finSense -->
+      <div class="module-card fade-in">
+        <div class="module-top">
+          <span class="module-name">finSense™</span>
+          <span class="module-dept">Finance</span>
+        </div>
+        <div class="module-title">Financial Intelligence</div>
+        <div class="module-desc">Integrated financial analytics bridging operational performance with P&amp;L outcomes — from cost-per-move to EBITDA contribution by service.</div>
+        <div class="module-features">
+          <span class="module-feat">Cost allocation by service</span>
+          <span class="module-feat">Budget vs actual variance</span>
+          <span class="module-feat">Cash flow forecasting</span>
+        </div>
+      </div>
+
+      <!-- procureSense -->
+      <div class="module-card fade-in">
+        <div class="module-top">
+          <span class="module-name">procureSense™</span>
+          <span class="module-dept">Procurement</span>
+        </div>
+        <div class="module-title">Supply Chain Analytics</div>
+        <div class="module-desc">Supplier performance, contract compliance, and spend analytics to reduce procurement costs and ensure operational continuity.</div>
+        <div class="module-features">
+          <span class="module-feat">Supplier scorecardsing</span>
+          <span class="module-feat">Spend categorisation</span>
+          <span class="module-feat">Contract performance</span>
+        </div>
+      </div>
+
+      <!-- Integration -->
+      <div class="module-card fade-in" style="background:linear-gradient(135deg,rgba(0,109,109,0.15),rgba(0,37,64,0.7));border-color:rgba(0,168,150,0.2);">
+        <div class="module-top">
+          <span class="module-name" style="color:var(--teal-light)">INTEGRATIONS</span>
+          <span class="module-dept">Platform</span>
+        </div>
+        <div class="module-title">Universal Connectivity</div>
+        <div class="module-desc">Pre-built connectors for the entire terminal technology ecosystem — no custom integration work required.</div>
+        <div class="module-features">
+          <span class="module-feat">Navis N4 / SPARCS N4</span>
+          <span class="module-feat">SAP, Oracle, IFS ERP</span>
+          <span class="module-feat">IoT, SCADA, Gate systems</span>
+          <span class="module-feat">VTS & port community systems</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- METHODOLOGY -->
+<section class="methodology" id="methodology">
+  <div class="section-inner">
+    <div class="method-intro fade-in">
+      <div class="section-label">Delivery Framework</div>
+      <h2 class="section-title">The <span>SEEET</span> Methodology</h2>
+      <p class="section-desc" style="text-align:center;margin:0 auto;">Our agile, four-stage delivery framework ensures rapid time-to-value while building lasting analytical capability inside your organisation.</p>
+    </div>
+
+    <div class="stages-container fade-in">
+      <div class="stages-connector"></div>
+
+      <div class="stage-card">
+        <div class="stage-num">01</div>
+        <div class="stage-title">Scope</div>
+        <div class="stage-subtitle">Delivery 4 Discovery</div>
+        <div class="stage-desc">Define operational priorities, data landscape, and success metrics. Assess current state and align stakeholders on high-value use cases.</div>
+        <div class="stage-timeline">8–10 weeks</div>
+      </div>
+
+      <div class="stage-card">
+        <div class="stage-num">02</div>
+        <div class="stage-title">Envision</div>
+        <div class="stage-subtitle">Design 4 Decisions</div>
+        <div class="stage-desc">Co-design the analytical architecture, data models, and dashboards tailored to your terminal's operational language and decision workflows.</div>
+        <div class="stage-timeline">Sprint-based</div>
+      </div>
+
+      <div class="stage-card">
+        <div class="stage-num">03</div>
+        <div class="stage-title">Engage</div>
+        <div class="stage-subtitle">Build 4 Capability</div>
+        <div class="stage-desc">Deploy integrated data pipelines and live dashboards. Train your teams to own, interpret, and act on analytical insight independently.</div>
+        <div class="stage-timeline">Iterative builds</div>
+      </div>
+
+      <div class="stage-card">
+        <div class="stage-num">04</div>
+        <div class="stage-title">Empower</div>
+        <div class="stage-subtitle">Operate 4 Value Realisation</div>
+        <div class="stage-desc">Embed data-driven culture across functions. Continuous improvement cycles that expand analytical coverage and deepen ROI month-over-month.</div>
+        <div class="stage-timeline">Ongoing partnership</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- IMPACT -->
+<section class="impact" id="impact">
+  <div class="section-inner">
+    <div class="impact-inner">
+      <div class="impact-stats fade-in">
+        <div class="stat-card featured">
+          <div class="stat-number">6–12</div>
+          <div class="stat-label"><strong>Month Payback Period</strong>Typical ROI realisation from first deployment — often accelerated by quick wins in reporting automation and labor optimisation.</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">50–70%</div>
+          <div class="stat-label"><strong>Reporting Cost Savings</strong>Reduction in manual reporting effort through automated BI pipelines.</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">10–15%</div>
+          <div class="stat-label"><strong>Labour Cost Savings</strong>Optimised gang planning and workforce analytics reduce cost-per-move.</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-number">3×</div>
+          <div class="stat-label"><strong>Faster Decisions</strong>Executive and operational teams act on insight in hours, not weeks.</div>
+        </div>
+      </div>
+
+      <div class="impact-content fade-in">
+        <div class="section-label">Impact</div>
+        <h2 class="section-title">Measurable <span>ROI</span><br>from Day One</h2>
+        <p class="section-desc">Infolayer clients consistently achieve significant, quantifiable returns within the first year of deployment — driven by eliminating manual reporting, optimising workforce deployment, and embedding intelligent operations.</p>
+
+        <div class="trust-signals">
+          <div class="trust-signal">
+            <div class="trust-signal-icon">🏛️</div>
+            <div class="trust-signal-text">
+              <strong>UK Government Registered R&D</strong>
+              Recognised for innovation in maritime data intelligence
+            </div>
+          </div>
+          <div class="trust-signal">
+            <div class="trust-signal-icon">📅</div>
+            <div class="trust-signal-text">
+              <strong>12+ Years of Port & Terminal Focus</strong>
+              Deep domain expertise, not generic BI consulting
+            </div>
+          </div>
+          <div class="trust-signal">
+            <div class="trust-signal-icon">🌍</div>
+            <div class="trust-signal-text">
+              <strong>Global Deployments Across 3 Continents</strong>
+              Europe, Americas, and Africa — proven at scale
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- CONTACT -->
+<section class="contact" id="contact">
+  <div class="section-inner">
+    <div style="margin-bottom:3rem;" class="fade-in">
+      <div class="section-label">Get in Touch</div>
+      <h2 class="section-title">Start Your<br><span>Data Intelligence</span> Journey</h2>
+      <p class="section-desc">Talk to our team about how terminalSense™ can transform your terminal operations. We'll assess your current data landscape and identify your quickest wins.</p>
+    </div>
+
+    <div class="contact-grid">
+      <div class="contact-form-wrap fade-in">
+        <h3 style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:600;margin-bottom:1.5rem;color:var(--white);">Request a Discovery Session</h3>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">First Name</label>
+            <input type="text" class="form-input" placeholder="John">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Last Name</label>
+            <input type="text" class="form-input" placeholder="Smith">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Work Email</label>
+          <input type="email" class="form-input" placeholder="john@terminal.com">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Organisation</label>
+          <input type="text" class="form-input" placeholder="Port Authority / Terminal Operator">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Area of Interest</label>
+          <select class="form-select">
+            <option value="">Select a module...</option>
+            <option>terminalSense™ — Full Platform</option>
+            <option>execSense™ — Executive Intelligence</option>
+            <option>opsSense™ — Operations</option>
+            <option>laborSense™ — Workforce</option>
+            <option>finSense™ — Finance</option>
+            <option>revSense™ — Commercial</option>
+            <option>engSense™ — Engineering</option>
+            <option>procureSense™ — Procurement</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tell us about your challenge</label>
+          <textarea class="form-textarea" placeholder="Describe your current data or operational challenges..."></textarea>
+        </div>
+        <button class="form-submit">Request Discovery Session →</button>
+      </div>
+
+      <div class="fade-in">
+        <div style="margin-bottom:1.5rem;">
+          <h3 style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:600;margin-bottom:0.5rem;color:var(--white);">Speak to Our Experts</h3>
+          <p style="font-size:0.85rem;color:var(--muted);line-height:1.65;">Our principals bring decades of terminal operations and data analytics experience. Reach out directly for a confidential conversation.</p>
+        </div>
+
+        <div class="contacts-list">
+          <div class="contact-person">
+            <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;">
+              <div class="contact-avatar">CT</div>
+              <div>
+                <div class="contact-name">Chris Tillin</div>
+                <div class="contact-role">Principal Consultant & Co-Founder</div>
+              </div>
+            </div>
+            <div class="contact-info">
+              <a href="mailto:chris.tillin@infolayer.com">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="3" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M1 4l6 4 6-4" stroke="currentColor" stroke-width="1.2"/></svg>
+                chris.tillin@infolayer.com
+              </a>
+              <a href="tel:+441234567890">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2h3l1.5 3.5-1.5 1a8 8 0 003.5 3.5l1-1.5L13 10v3a1 1 0 01-1 1C5.4 13.5.5 8.6 1 2a1 1 0 011-1z" stroke="currentColor" stroke-width="1.2"/></svg>
+                +44 (0) 123 456 7890
+              </a>
+              <a href="https://linkedin.com" target="_blank">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M4 6v4M4 4v.5M7 10V7.5C7 6.7 7.7 6 8.5 6S10 6.7 10 7.5V10M7 6v4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+                LinkedIn Profile
+              </a>
+            </div>
+          </div>
+
+          <div class="contact-person">
+            <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem;">
+              <div class="contact-avatar" style="background:linear-gradient(135deg,var(--teal),var(--teal-light));">JK</div>
+              <div>
+                <div class="contact-name">JC Kasimani</div>
+                <div class="contact-role">Principal Consultant & Co-Founder</div>
+              </div>
+            </div>
+            <div class="contact-info">
+              <a href="mailto:jc.kasimani@infolayer.com">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="3" width="12" height="8" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M1 4l6 4 6-4" stroke="currentColor" stroke-width="1.2"/></svg>
+                jc.kasimani@infolayer.com
+              </a>
+              <a href="tel:+441234567891">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 2h3l1.5 3.5-1.5 1a8 8 0 003.5 3.5l1-1.5L13 10v3a1 1 0 01-1 1C5.4 13.5.5 8.6 1 2a1 1 0 011-1z" stroke="currentColor" stroke-width="1.2"/></svg>
+                +44 (0) 123 456 7891
+              </a>
+              <a href="https://linkedin.com" target="_blank">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.2"/><path d="M4 6v4M4 4v.5M7 10V7.5C7 6.7 7.7 6 8.5 6S10 6.7 10 7.5V10M7 6v4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+                LinkedIn Profile
+              </a>
+            </div>
+          </div>
+
+          <div style="padding:1.25rem;background:rgba(0,229,255,0.04);border:1px solid var(--border);border-radius:8px;margin-top:0.5rem;">
+            <div style="font-family:'JetBrains Mono',monospace;font-size:0.7rem;color:var(--aqua);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.5rem;">Headquarters</div>
+            <div style="font-size:0.83rem;color:var(--muted);line-height:1.7;">
+              Infolayer Limited<br>
+              United Kingdom<br>
+              <span style="color:var(--teal-light);">UK Registered · Companies House</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:0.5rem;">
+        <svg width="28" height="28" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="36" height="36" rx="6" fill="rgba(0,229,255,0.08)"/>
+          <path d="M8 24 L14 14 L18 19 L22 12 L28 24" stroke="#00e5ff" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="14" cy="14" r="2" fill="#00cfb4"/>
+          <circle cx="22" cy="12" r="2" fill="#00e5ff"/>
+        </svg>
+        <span style="font-family:'Syne',sans-serif;font-weight:700;font-size:1rem;">info<span style="color:var(--aqua)">layer</span></span>
+      </div>
+      <div class="footer-copy">© 2025 Infolayer Limited. All rights reserved. UK Government Registered R&D.</div>
+    </div>
+    <div class="footer-links">
+      <a href="#solutions">Solutions</a>
+      <a href="#methodology">Methodology</a>
+      <a href="#impact">Impact</a>
+      <a href="#contact">Contact</a>
+      <a href="#">Privacy Policy</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // Mobile menu
+  function toggleMenu() {
+    const menu = document.getElementById('mobileMenu');
+    menu.classList.toggle('open');
+  }
+
+  // Scroll animations
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        setTimeout(() => entry.target.classList.add('visible'), i * 80);
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+
+  // Navbar scroll effect
+  window.addEventListener('scroll', () => {
+    const nav = document.getElementById('navbar');
+    if (window.scrollY > 40) {
+      nav.style.background = 'rgba(5,15,31,0.97)';
+      nav.style.boxShadow = '0 4px 24px rgba(0,0,0,0.3)';
+    } else {
+      nav.style.background = 'rgba(5,15,31,0.85)';
+      nav.style.boxShadow = 'none';
+    }
+  });
+
+  // Animate bars on page load
+  document.querySelectorAll('.bar').forEach((bar, i) => {
+    bar.style.animationDelay = `${i * 0.05 + 0.8}s`;
+  });
+
+  // Form submit
+  document.querySelector('.form-submit').addEventListener('click', function() {
+    this.textContent = '✓ Request Sent — We\'ll be in touch shortly';
+    this.style.background = 'var(--green)';
+    setTimeout(() => {
+      this.textContent = 'Request Discovery Session →';
+      this.style.background = 'var(--aqua)';
+    }, 3500);
+  });
+</script>
+</body>
+</html>
